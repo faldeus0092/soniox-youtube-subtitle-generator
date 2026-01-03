@@ -1,3 +1,6 @@
 __pycache__/
 .env
 env/
+*.srt
+*.vtt
+*.m4a
