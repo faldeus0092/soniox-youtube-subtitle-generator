@@ -4,3 +4,6 @@ env/
 *.srt
 *.vtt
 *.m4a
+output/
+python app.py --yt_url "https://youtu.be/QRIJUqvb7NI?si=natY1iba7F6S9KPI" -o "
+みんなのカスIT環境を集めたよ！！！.srt" --srt_max_duration 4000

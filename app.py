@@ -3,7 +3,7 @@ import os, time, argparse
 import requests
 from requests import Session
 from dotenv import load_dotenv
-from srt_converter import convert_srt
+from srt_converter import soniox_to_srt
 import downloader
 import argparse
 
@@ -11,6 +11,10 @@ load_dotenv()
 
 SONIOX_API_BASE_URL = "https://api.soniox.com"
 SONIOX_TEMP_KEY_URL = os.environ.get("SONIOX_TEMP_KEY_URL")
+SONIOX_SRT_MIN_DURATION = os.environ.get("SONIOX_SRT_MIN_DURATION", 1000)
+SONIOX_SRT_MAX_DURATION = os.environ.get("SONIOX_SRT_MAX_DURATION", 4000)
+OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "output")
+TARGET_LANGUAGE = os.environ.get("TARGET_LANGUAGE")
 
 def get_api_key() -> str:
     """
@@ -54,7 +58,7 @@ def get_config(
     config ={
         "model":"stt-async-v3",
         "file_id":file_id,
-        "language_hints":["ja"],
+        "language_hints":[TARGET_LANGUAGE],
         "context":"",
         "enable_speaker_diarization":False,
         "enable_language_identification":False
@@ -68,23 +72,6 @@ def upload_audio(session: Session, audio_path: str) -> str:
         files={"file": open(audio_path, "rb")},
     )
     file_id = res.json()["id"]
-    print(f"File ID: {file_id}")
-    return file_id
-
-import httpx
-def upload_audio_with_httpx(api_key: str, audio_path: str) -> str:
-    with open(audio_path, "rb") as f:
-        files = {"file": (audio_path, f)}
-        headers = {"Authorization": f"Bearer {api_key}"}
-        response = httpx.post(
-            "https://api.soniox.com/v1/files",
-            files=files,
-            headers=headers,
-            timeout=60.0,
-        )
-    response.raise_for_status()
-    print(response)
-    file_id = response.json()["id"]
     print(f"File ID: {file_id}")
     return file_id
 
@@ -160,7 +147,7 @@ def delete_file(session: Session, file_id: str) -> dict:
     res = session.delete(f"{SONIOX_API_BASE_URL}/v1/files/{file_id}")
     res.raise_for_status()
 
-def transcribe_file(session: Session, audio_path: Optional[str], srt_min_duration: int, srt_max_duration: int, output: str) -> None:
+def transcribe_file(session: Session, audio_path: Optional[str], srt_min_duration: int, srt_max_duration: int, output_file_path: str) -> None:
     if audio_path:
         assert audio_path
         file_id = upload_audio(session, audio_path)
@@ -169,15 +156,10 @@ def transcribe_file(session: Session, audio_path: Optional[str], srt_min_duratio
     transcription_id = create_transcription(session, config)
     wait_until_completed(session, transcription_id)
     res = get_transcription(session, transcription_id)
-    
     tokens = res["tokens"]
     text = render_tokens(tokens)
-    print(text)
-    # generate srt file
-    convert_srt(tokens, srt_min_duration, srt_max_duration, output)
-    
+    soniox_to_srt(tokens, srt_min_duration, srt_max_duration, output_file_path)
     delete_transcription(session, transcription_id)
-
     if file_id is not None:
         delete_file(session, file_id)
     return
@@ -185,25 +167,20 @@ def transcribe_file(session: Session, audio_path: Optional[str], srt_min_duratio
 def main():
     parser = argparse.ArgumentParser(description="Generate subtitles for a given audio file or YouTube video. Intended to use with ASBPlayer")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-a", "--audio_path", help="Path to the local audio file")
+    group.add_argument("-a", "--audio_file_path", help="Path to the local audio file")
     group.add_argument("-yt", "--yt_url", help="YouTube video URL")
-    parser.add_argument("--srt_min_duration", type=int, default=1000, help="Minimum duration (ms) per SRT entry")
-    parser.add_argument("--srt_max_duration", type=int, default=5000, help="Maximum duration (ms) per SRT entry")
-    parser.add_argument("-o", "--output", default="output.srt", help="Output SRT file name")
     args = parser.parse_args()
 
-    if args.audio_path:
-        audio_path = args.audio_path
+    if args.audio_file_path:
+        audio_file_path = args.audio_file_path
     else:
-        audio_path = downloader.download_yt_from_url(args.yt_url)
+        audio_file_path = downloader.download_yt_from_url(args.yt_url)
 
-    srt_min_duration = args.srt_min_duration
-    srt_max_duration = args.srt_max_duration
-    output = args.output
+    output_file_path = os.path.join(OUTPUT_DIR, f"{os.path.splitext(os.path.basename(audio_file_path))[0]}.srt")
     api_key = get_api_key()
     session = requests.Session()
     session.headers["Authorization"] = f"Bearer {api_key}"
-    transcribe_file(session, audio_path, srt_min_duration, srt_max_duration, output)
+    transcribe_file(session, audio_file_path, SONIOX_SRT_MIN_DURATION, SONIOX_SRT_MAX_DURATION, output_file_path)
 
 if __name__ == "__main__":
     main()

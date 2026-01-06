@@ -1,3 +1,5 @@
+import logging
+
 def get_segment_info(segment):
     # 枕浮く。 え、聞いたことないよ。 嘘。 古文かな。 枕浮く。
     start = segment[0]["start_ms"]
@@ -14,7 +16,7 @@ def to_timestamp(ms):
     ms %= 1000
     return f"{h:02}:{m:02}:{s:02},{ms:03}"
 
-def convert_srt(tokens: list[dict], min_duration: int, max_duration: int, output: str):
+def soniox_to_srt(tokens: list[dict], min_duration: int, max_duration: int, output_file_path: str):
     punctuation_segment = []
     cur = []
     # split at punctuation 、！　。
@@ -62,11 +64,17 @@ def convert_srt(tokens: list[dict], min_duration: int, max_duration: int, output
             "text": buf_text
         })
 
-    with open(output, 'w') as f:
-        section = []
-        for lines in merged:
-            section.append(str(lines["index"]))
-            section.append(f"{to_timestamp(lines["start"])} --> {to_timestamp(lines["end"])}")
-            section.append(lines["text"])
-            section.append("")
-        f.write("\n".join(section))
+    try:
+        with open(output_file_path, 'w') as f:
+            section = []
+            for lines in merged:
+                section.append(str(lines["index"]))
+                section.append(f"{to_timestamp(lines["start"])} --> {to_timestamp(lines["end"])}")
+                section.append(lines["text"])
+                section.append("")
+            f.write("\n".join(section))
+            logging.info(f"Successfully generated srt file {output_file_path}")
+            print(f"Successfully generated srt file {output_file_path}")
+    except IOError as e:
+            logging.error(f"Failed to generate srt file: {e}")
+            print(f"Failed to generate srt file: {e}")
