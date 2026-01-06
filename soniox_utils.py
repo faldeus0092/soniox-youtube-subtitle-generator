@@ -1,5 +1,3 @@
-import logging
-
 def get_segment_info(segment):
     # 枕浮く。 え、聞いたことないよ。 嘘。 古文かな。 枕浮く。
     start = segment[0]["start_ms"]
@@ -16,7 +14,7 @@ def to_timestamp(ms):
     ms %= 1000
     return f"{h:02}:{m:02}:{s:02},{ms:03}"
 
-def soniox_to_srt(tokens: list[dict], min_duration: int, max_duration: int, output_file_path: str):
+def soniox_to_srt(tokens: list[dict], min_duration: int, max_duration: int, max_chars_per_line:int):
     punctuation_segment = []
     cur = []
     # split at punctuation 、！　。
@@ -42,9 +40,10 @@ def soniox_to_srt(tokens: list[dict], min_duration: int, max_duration: int, outp
             continue
         buf_start, buf_end, buf_text = get_segment_info(buf)
         combined_duration = end - buf_start
+        combined_text_count = len(buf_text) + len(text)
         
         # only merge if not exceed the max duration or buffer is too short
-        if combined_duration <= max_duration or buf[-1]["end_ms"] - buf[0]["start_ms"] < min_duration:
+        if (combined_duration <= max_duration or buf[-1]["end_ms"] - buf[0]["start_ms"] < min_duration) and combined_text_count <= max_chars_per_line:
             buf = buf + segment
         else:
             merged.append({
@@ -63,18 +62,18 @@ def soniox_to_srt(tokens: list[dict], min_duration: int, max_duration: int, outp
             "end": buf_end,
             "text": buf_text
         })
-
+    
     try:
-        with open(output_file_path, 'w') as f:
+        # with open(output_file_path, 'w') as f:
             section = []
             for lines in merged:
                 section.append(str(lines["index"]))
                 section.append(f"{to_timestamp(lines["start"])} --> {to_timestamp(lines["end"])}")
                 section.append(lines["text"])
                 section.append("")
-            f.write("\n".join(section))
-            logging.info(f"Successfully generated srt file {output_file_path}")
-            print(f"Successfully generated srt file {output_file_path}")
-    except IOError as e:
-            logging.error(f"Failed to generate srt file: {e}")
-            print(f"Failed to generate srt file: {e}")
+            return "\n".join(section)
+            # f.write("\n".join(section))
+            # print(f"Successfully generated srt file {output_file_path}")
+    except Exception as e:
+            print(f"Failed to generate srt: {e}")
+    return merged
