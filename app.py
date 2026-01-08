@@ -256,10 +256,10 @@ class SubtitleProcessor:
             print("No subtitles were generated.")
             return
         try:
-            with open(output_file_path, "w", encoding="utf-8") as f:
+            with open('output_file_path', "w", encoding="utf-8") as f:
                 f.write(result)
                 logging.info(f"Successfully generated srt file {output_file_path}")
-                print(f"Successfully generated srt file at: {os.path.abspath(output_file_path)}")
+                print(f"Successfully generated srt file at: [{'stable-ts' if self.local_processor else 'soniox'}]-{os.path.abspath(output_file_path)}")
         except IOError as e:
             logging.error(f"Failed to generate srt file: {e}")
             print(f"Failed to generate srt file: {e}")
@@ -309,7 +309,9 @@ class SubtitleProcessor:
         finally:
             self.temp_audio_file = os.path.abspath(filename)
             os.makedirs(OUTPUT_DIR, exist_ok=True)
-            self.output_srt_path = os.path.join(OUTPUT_DIR, f"{os.path.splitext(os.path.basename(self.video_title))[0]}.srt")
+            
+            # example output/[soniox]-「っす」は失礼じゃない。むしろ神。.srt
+            self.output_srt_path = os.path.join(OUTPUT_DIR, f"[{'stable-ts' if self.local_processor else 'soniox'}]-{os.path.splitext(os.path.basename(self.video_title))[0]}.srt")
     
     def cleanup_local_temp_files(self):
         if self.temp_audio_file:

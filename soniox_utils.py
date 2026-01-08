@@ -21,7 +21,7 @@ def soniox_to_srt(tokens: list[dict], min_duration: int, max_duration: int, max_
     # [['枕', '浮', 'く', '。'], [' ', 'え', '、', '聞', 'いた', 'こと', 'ない', 'よ', '。'], [' ', '嘘', '。'], [' ', '古', '文', 'か', 'な', '。'], [' ', '枕', '浮', 'く', '。'],
     for token in tokens:
         cur.append(token)
-        if token["text"] in ["。","！","？","!","?"]:
+        if token["text"] in ["。","！","？","!","?","、", ","]:
             punctuation_segment.append(cur)
             cur = []
     if cur:
