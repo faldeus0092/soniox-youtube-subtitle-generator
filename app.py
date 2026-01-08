@@ -256,10 +256,10 @@ class SubtitleProcessor:
             print("No subtitles were generated.")
             return
         try:
-            with open('output_file_path', "w", encoding="utf-8") as f:
+            with open(output_file_path, "w", encoding="utf-8") as f:
                 f.write(result)
                 logging.info(f"Successfully generated srt file {output_file_path}")
-                print(f"Successfully generated srt file at: [{'stable-ts' if self.local_processor else 'soniox'}]-{os.path.abspath(output_file_path)}")
+                print(f"Successfully generated srt file at: {os.path.abspath(output_file_path)}")
         except IOError as e:
             logging.error(f"Failed to generate srt file: {e}")
             print(f"Failed to generate srt file: {e}")
