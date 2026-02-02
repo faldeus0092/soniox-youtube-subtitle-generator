@@ -18,7 +18,7 @@ SONIOX_API_BASE_URL = "https://api.soniox.com"
 SONIOX_TEMP_KEY_URL = os.getenv("SONIOX_TEMP_KEY_URL")
 SONIOX_SRT_MIN_DURATION = int(os.getenv("SONIOX_SRT_MIN_DURATION", 1000))
 SONIOX_SRT_MAX_DURATION = int(os.getenv("SONIOX_SRT_MAX_DURATION", 3500))
-SONIOX_MAX_CHARS = int(os.getenv("SONIOX_MAX_CHARS", 20))
+SONIOX_SRT_MAX_CHARS = int(os.getenv("SONIOX_SRT_MAX_CHARS", 20))
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output")
 TARGET_LANGUAGE = os.getenv("TARGET_LANGUAGE").split(",")
 
@@ -217,12 +217,20 @@ class StableTSProcessor:
 
         # Transcribe
         try:
+            if TARGET_LANGUAGE[0] == "ja":
+                initial_prompt = 'こんにちは。元気ですか？はい、元気です！楽しみですね。'
+            else:
+                initial_prompt = None
             result = self.model.transcribe(
                 audio_path,
                 word_timestamps=word_timestamps,
                 vad=vad,
                 temperature=0.0,
+                initial_prompt=initial_prompt
             )
+            result.split_by_punctuation([('。', ' '), '、', '！', '？', "!","?","、", ","])
+            result.split_by_length(max_chars=SONIOX_SRT_MAX_CHARS)
+            result.split_by_duration(max_dur=float(SONIOX_SRT_MAX_DURATION/1000))
             return result.to_srt_vtt(segment_level=True, word_level=False)
         except Exception as e:
             logging.error(f"stable-ts transcription failed: {e}")
@@ -248,7 +256,7 @@ class SubtitleProcessor:
             if self.local_processor:
                 result = self.local_processor.get_audio_segments(input_file_path, language=language, word_timestamps=True)
             elif self.soniox_client:
-                result = self.soniox_client.transcribe_file(input_file_path, SONIOX_SRT_MIN_DURATION, SONIOX_SRT_MAX_DURATION, SONIOX_MAX_CHARS)
+                result = self.soniox_client.transcribe_file(input_file_path, SONIOX_SRT_MIN_DURATION, SONIOX_SRT_MAX_DURATION, SONIOX_SRT_MAX_CHARS)
         except Exception as e:
             logging.error(f"Error executing {os.path.basename(input_file_path)}: {e}")
         
